@@ -2,13 +2,19 @@ import { BLACK, EMPTY, SIZE, at, inside, other, winnerFrom } from './game.js'
 
 const WIN = 50_000_000
 const DIRS = [[1, 0], [0, 1], [1, 1], [1, -1]]
+const OPEN_THREE_PATTERNS = ['01110', '010110', '011010']
+
+export const RAPFI_BUDGETS = Object.freeze({
+  4: Object.freeze({ quiet: 2000, max: 3000 }),
+  5: Object.freeze({ quiet: 5000, max: 8000 }),
+})
 
 export const LEVELS = [
   { id: 1, name: '初见', subtitle: '轻松熟悉棋盘', time: 120, depth: 1, width: 8, noise: 0.34 },
   { id: 2, name: '进阶', subtitle: '会进攻也会防守', time: 260, depth: 2, width: 10, noise: 0.12 },
   { id: 3, name: '大师', subtitle: '多步算路与反击', time: 720, depth: 4, width: 12, noise: 0 },
-  { id: 4, name: '天穹', subtitle: '冠军引擎 · 极难', time: 2800, depth: 8, width: 14, noise: 0 },
-  { id: 5, name: '神域', subtitle: '冠军引擎 · 全力', time: 7800, depth: 12, width: 18, noise: 0 },
+  { id: 4, name: '天穹', subtitle: 'Rapfi NNUE · 极难', time: 2800, depth: 8, width: 14, noise: 0 },
+  { id: 5, name: '神域', subtitle: 'Rapfi NNUE · 全力', time: 7800, depth: 12, width: 18, noise: 0 },
 ]
 
 function lineShape(board, x, y, side, dx, dy) {
@@ -67,6 +73,96 @@ export function pointScore(board, x, y, side) {
   if (threes >= 2) score += 700_000
   board[at(x, y)] = EMPTY
   return score
+}
+
+function lineCode(board, x, y, side, dx, dy) {
+  let code = ''
+  for (let offset = -5; offset <= 5; offset++) {
+    const nx = x + dx * offset
+    const ny = y + dy * offset
+    if (!inside(nx, ny)) code += '2'
+    else {
+      const cell = board[at(nx, ny)]
+      code += cell === EMPTY ? '0' : cell === side ? '1' : '2'
+    }
+  }
+  return code
+}
+
+function patternThroughCenter(code, pattern) {
+  const center = 5
+  for (let start = 0; start <= code.length - pattern.length; start++) {
+    if (start <= center && center < start + pattern.length && code.slice(start, start + pattern.length) === pattern) return true
+  }
+  return false
+}
+
+function threatAt(board, x, y, side) {
+  const index = at(x, y)
+  if (board[index] !== EMPTY) return null
+  board[index] = side
+  const immediate = Boolean(winnerFrom(board, x, y))
+  let fours = 0
+  let openThrees = 0
+
+  for (const [dx, dy] of DIRS) {
+    const code = lineCode(board, x, y, side, dx, dy)
+    let hasFour = false
+    for (let start = 1; start <= 6; start++) {
+      if (!(start <= 5 && 5 < start + 5)) continue
+      const window = code.slice(start, start + 5)
+      if (!window.includes('2') && window.split('1').length - 1 === 4 && window.includes('0')) {
+        hasFour = true
+        break
+      }
+    }
+    if (hasFour) fours++
+    if (OPEN_THREE_PATTERNS.some((pattern) => patternThroughCenter(code, pattern))) openThrees++
+  }
+
+  board[index] = EMPTY
+  return { immediate, fours, openThrees, doubleThreat: fours + openThrees >= 2 }
+}
+
+/**
+ * Deterministically classifies whether a position deserves the engine's full
+ * tactical search budget. The input board is never mutated.
+ */
+export function assessComplexity(inputBoard, side) {
+  const board = Uint8Array.from(inputBoard)
+  const opponent = other(side)
+  const result = {
+    tactical: false,
+    immediateWin: false,
+    immediateBlock: false,
+    four: false,
+    openThree: false,
+    doubleThreat: false,
+  }
+
+  for (let y = 0; y < SIZE; y++) {
+    for (let x = 0; x < SIZE; x++) {
+      if (board[at(x, y)] !== EMPTY) continue
+      const mine = threatAt(board, x, y, side)
+      const theirs = threatAt(board, x, y, opponent)
+      result.immediateWin ||= mine.immediate
+      result.immediateBlock ||= theirs.immediate
+      result.four ||= mine.fours > 0 || theirs.fours > 0
+      result.openThree ||= mine.openThrees > 0 || theirs.openThrees > 0
+      result.doubleThreat ||= mine.doubleThreat || theirs.doubleThreat
+    }
+  }
+
+  result.tactical = result.immediateWin || result.immediateBlock || result.four || result.openThree || result.doubleThreat
+  return result
+}
+
+/** Returns the time budget (milliseconds) for one engine turn. */
+export function adaptiveBudget(level, board, side) {
+  const numericLevel = Math.max(1, Math.min(5, Number(level) || 1))
+  const rapfiBudget = RAPFI_BUDGETS[numericLevel]
+  if (!rapfiBudget) return LEVELS[numericLevel - 1].time
+  return assessComplexity(board, side).tactical ? rapfiBudget.max : rapfiBudget.quiet
 }
 
 export function candidates(board, side, limit = 14) {
