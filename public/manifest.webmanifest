@@ -1,6 +1,6 @@
 {
-  "name": "雾弈五子棋",
-  "short_name": "雾弈",
+  "name": "弈境五子棋",
+  "short_name": "弈境",
   "description": "五档 AI、WebRTC 联机、棋谱复盘与世界名局学习",
   "start_url": "./",
   "scope": "./",
