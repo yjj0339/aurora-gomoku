@@ -64,14 +64,7 @@ const stored = loadSettings()
 const roomFromUrl = new URLSearchParams(location.search).get('room')?.trim().toUpperCase()
 const validRoomFromUrl = /^[A-Z2-9]{6}$/.test(roomFromUrl || '') ? roomFromUrl : ''
 const RAPFI_DISPLAY_NAME = 'Rapfi 2026 冠军同源核心 · 官方 mix9svq NNUE'
-const FALLBACK_DISPLAY_NAME = '弈境兼容引擎'
-const LOBBY_MODES = [
-  { id: 'ai', icon: 'cpu', title: 'AI 对决', subtitle: '五档棋力 · 冠军引擎' },
-  { id: 'coach', icon: 'bulb', title: 'AI 教学', subtitle: '逐手提示 · 深度讲解' },
-  { id: 'local', icon: 'users', title: '双人同屏', subtitle: '轮流落子 · 即开即玩' },
-  { id: 'online', icon: 'wifi', title: '远程联机', subtitle: '六位房间码 · 实时同步' },
-]
-const validLobbyModes = new Set(LOBBY_MODES.map((mode) => mode.id))
+const FALLBACK_DISPLAY_NAME = '雾弈兼容引擎'
 
 const state = {
   view: 'home',
@@ -91,14 +84,6 @@ const state = {
   filters: { query: '', mode: 'all', result: 'all', level: 'all', date: 'all' },
   hover: null,
   aiWarmup: 'idle',
-  lobbyMode: validLobbyModes.has(stored.lobbyMode) ? stored.lobbyMode : 'ai',
-  lobbyLevel: Number.isInteger(stored.lobbyLevel) && stored.lobbyLevel >= 1 && stored.lobbyLevel <= 5 ? stored.lobbyLevel : 5,
-  lobbySide: stored.lobbySide === WHITE ? WHITE : BLACK,
-  confirmMove: stored.confirmMove === true,
-  showSituation: stored.showSituation !== false,
-  showMoveNumbers: stored.showMoveNumbers === true,
-  pendingMove: null,
-  coach: { thinking: false, text: '需要时可调用冠军引擎分析下一手。', suggested: null },
 }
 
 let resizeObserver = null
@@ -157,12 +142,6 @@ function icon(name) {
     chevron: '<path d="m9 18 6-6-6-6"/>',
     external: '<path d="M14 4h6v6M20 4l-9 9"/><path d="M18 13v6a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h6"/>',
     copy: '<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/>',
-    users: '<circle cx="9" cy="8" r="3"/><path d="M3.5 19a5.5 5.5 0 0 1 11 0"/><circle cx="17" cy="9" r="2.5"/><path d="M15.5 14.5a4.8 4.8 0 0 1 5 4.5"/>',
-    sliders: '<path d="M4 7h10m4 0h2M4 17h2m4 0h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/>',
-    bulb: '<path d="M9 18h6M10 22h4"/><path d="M8.2 14.5A6 6 0 1 1 15.8 14.5c-.9.7-1.3 1.5-1.3 2.5h-5c0-1-.4-1.8-1.3-2.5Z"/>',
-    more: '<circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/>',
-    check: '<path d="m5 12 4 4L19 6"/>',
-    sound: '<path d="M4 10v4h3l4 4V6l-4 4H4Z"/><path d="M15 9a4 4 0 0 1 0 6M17.8 6.2a8 8 0 0 1 0 11.6"/>',
   }
   return `<svg class="button-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths[name] || paths.grid}</svg>`
 }
@@ -213,16 +192,12 @@ function humanResult(record) {
 }
 
 function renderHeader() {
-  if (state.view === 'home') return `<header class="topbar yijing-topbar">
-    <button class="brand yijing-brand" data-view="home" aria-label="弈境五子棋首页"><span class="brand-copy"><strong>弈境</strong></span></button>
-    <div class="yijing-home-actions"><button class="icon-button" data-view="stats" aria-label="个人数据">${icon('chart')}<span>数据</span></button><button class="icon-button" data-view="records" aria-label="棋谱回忆">${icon('history')}<span>棋谱</span></button><button class="icon-button" data-action="toggle-sound" aria-label="音效开关">${icon('sound')}<span>${state.sound ? '音效开' : '音效关'}</span></button></div>
-  </header>`
   const navItems = [['home', '对弈'], ['features', '功能'], ['records', '棋谱'], ['learn', '学堂']]
   const activeView = state.view === 'stats' ? 'features' : state.view
   return `<header class="topbar">
     <button class="brand" data-view="home" aria-label="返回首页">
       <span class="brand-mark">${icon('grid')}</span>
-      <span class="brand-copy"><strong>弈境</strong><small>YIJING GOMOKU</small></span>
+      <span class="brand-copy"><strong>雾弈</strong><small>AURORA GOMOKU</small></span>
     </button>
     <nav class="nav" aria-label="主导航">${navItems.map(([id, label]) => `<button class="nav-button ${activeView === id ? 'active' : ''}" data-view="${id}">${label}</button>`).join('')}</nav>
     <div class="top-actions"><button class="icon-button" data-action="theme" aria-label="切换主题">${icon('palette')}</button></div>
@@ -243,77 +218,42 @@ function miniBoard() {
   </div>`
 }
 
-function persistUiSettings() {
-  saveSettings({
-    ...loadSettings(),
-    theme: state.theme,
-    sound: state.sound,
-    lobbyMode: state.lobbyMode,
-    lobbyLevel: state.lobbyLevel,
-    lobbySide: state.lobbySide,
-    confirmMove: state.confirmMove,
-    showSituation: state.showSituation,
-    showMoveNumbers: state.showMoveNumbers,
-  })
-}
-
-function isEngineMode(gameOrMode) {
-  const mode = typeof gameOrMode === 'string' ? gameOrMode : gameOrMode?.mode
-  return mode === 'ai' || mode === 'coach'
-}
-
-function lobbyPlaySummary() {
-  if (state.lobbyMode === 'ai') return `${LEVELS[state.lobbyLevel - 1].name} · ${state.lobbySide === BLACK ? '执黑' : '执白'} · 15 路`
-  if (state.lobbyMode === 'coach') return `教学局 · ${state.lobbySide === BLACK ? '执黑' : '执白'} · 逐手提示`
-  if (state.lobbyMode === 'local') return '双人轮流 · 黑方先行 · 15 路'
-  return '六位房间码 · 15 路标准棋盘'
-}
-
-function lobbyStartLabel() {
-  return { ai: '开始 AI 对决', coach: '进入 AI 教学局', local: '开始双人对弈', online: '进入远程棋室' }[state.lobbyMode]
-}
-
-function homeScoreTriplet(mode) {
-  const records = state.history.filter((record) => mode === 'ai' ? record.mode === 'ai' || record.mode === 'coach' : record.mode === mode)
-  if (mode === 'local') return {
-    first: records.filter((record) => record.resultCode?.startsWith('B+')).length,
-    second: records.filter((record) => record.resultCode?.startsWith('W+')).length,
-    draw: records.filter((record) => record.resultCode === '0').length,
-  }
-  return {
-    first: records.filter((record) => humanResult(record) === 'win').length,
-    second: records.filter((record) => humanResult(record) === 'loss').length,
-    draw: records.filter((record) => humanResult(record) === 'draw').length,
-  }
-}
-
 function renderHome() {
+  const stats = safeStats()
+  const recent = state.history[0]
   const unfinished = state.unfinished
-  const pvp = homeScoreTriplet('local'); const aiScore = homeScoreTriplet('ai'); const online = homeScoreTriplet('online')
-  return `<main class="main yijing-home-main">
-    <section class="yijing-home" aria-label="弈境五子棋首页">
-      <div class="yijing-hero">
-        <div class="yijing-stones" aria-hidden="true"><i class="black"></i><i class="white"></i></div>
-        <h1>弈境五子棋</h1>
-        <p>拟真棋盘 · AI 教学 · 实时教练 · 远程联机</p>
-      </div>
-
-      <div class="yijing-mode-grid">${LOBBY_MODES.map((mode) => `<button class="yijing-mode-card ${state.lobbyMode === mode.id ? 'selected' : ''}" data-action="select-lobby-mode" data-mode="${mode.id}"><span class="yijing-mode-icon">${icon(mode.icon)}</span><span><strong>${mode.title}</strong><small>${mode.id === 'ai' ? '五档棋力 · 纯粹对弈' : mode.id === 'coach' ? '逐手引导 · 边下边学' : mode.id === 'local' ? '同屏面对面过弈' : '房间码邀请朋友'}</small></span><i class="mode-check">${icon('check')}</i></button>`).join('')}</div>
-
-      <div class="yijing-setting-list">
-        <button data-action="open-play-settings"><span class="setting-icon">${icon('sliders')}</span><span><strong>玩法设置</strong><small>${escapeHtml(lobbyPlaySummary())}</small></span>${icon('chevron')}</button>
-        <button data-action="theme"><span class="setting-icon">${icon('palette')}</span><span><strong>外观设置</strong><small>${THEMES.find((theme) => theme.id === state.theme)?.name} · 毛玻璃界面</small></span>${icon('chevron')}</button>
-      </div>
-
-      <div class="yijing-score-strip">
-        <span><strong>${pvp.first} · ${pvp.second} · ${pvp.draw}</strong><small>双人 · 黑 / 白 / 和</small></span>
-        <span><strong>${aiScore.first} · ${aiScore.second} · ${aiScore.draw}</strong><small>人机 · 胜 / 负 / 和</small></span>
-        <span><strong>${online.first} · ${online.second} · ${online.draw}</strong><small>联机 · 胜 / 负 / 和</small></span>
-      </div>
-
-      <button class="yijing-start" data-action="start-lobby"><span>开始对局</span>${icon('arrow')}</button>
-      ${unfinished ? `<button class="yijing-resume" data-action="resume-game">${icon('history')}继续未完对局 · 第 ${unfinished.moves?.length || 0} 手${icon('chevron')}</button>` : ''}
+  return `<main class="main">
+    <section class="home-hero refined-hero">
+      <div class="hero-copy-wrap">
+        <span class="eyebrow"><i class="eyebrow-dot"></i> CHAMPION ENGINE · LOCAL FIRST</span>
+        <h1>思考更深，<span class="gradient-word">落子更快。</span></h1>
+        <p class="hero-copy hero-copy-desktop">冠军级 AI、点对点联机与完整棋谱系统，在一座轻盈、安静、不会遮住棋盘的数字棋室里协同工作。</p>
+        <p class="hero-copy hero-copy-mobile">冠军级 AI、远程联机与棋谱复盘，一步开始。</p>
+        <div class="hero-actions">
+          <button class="primary-button" data-action="open-ai">${icon('spark')}挑战 AI</button>
+          <button class="secondary-button" data-action="open-online">${icon('wifi')}远程联机</button>
+        </div>
+      </div>${miniBoard()}
     </section>
+
+    <section class="command-grid" aria-label="快捷控制台">
+      <button class="command-card primary-command" data-action="${unfinished ? 'resume-game' : 'open-ai'}">
+        <span class="command-icon">${icon(unfinished ? 'play' : 'spark')}</span><span class="command-copy"><small>${unfinished ? 'RESUME' : 'NEW MATCH'}</small><strong>${unfinished ? `继续第 ${unfinished.moves?.length || 0} 手` : '开始冠军挑战'}</strong><em>${unfinished ? `AI · ${LEVELS[(unfinished.level || 1) - 1]?.name}` : '选择五档棋力与执子'}</em></span>${icon('arrow')}
+      </button>
+      <button class="command-card" data-action="${recent ? 'replay' : 'open-ai'}" ${recent ? `data-id="${recent.id}"` : ''}>
+        <span class="command-icon">${icon('history')}</span><span class="command-copy"><small>LAST KIFU</small><strong>${recent ? escapeHtml(resultLabel(recent)) : '等待第一份棋谱'}</strong><em>${recent ? `${recent.moves.length} 手 · ${formatDate(recent.endedAt || recent.startedAt)}` : '完成对局后自动生成'}</em></span>${icon('chevron')}
+      </button>
+      <button class="command-card" data-view="stats">
+        <span class="command-icon">${icon('chart')}</span><span class="command-copy"><small>YOUR DATA</small><strong>${stats.total} 局 · ${Math.round(stats.winRate || 0)}% 胜率</strong><em>最佳连胜 ${stats.bestStreak || 0} 局</em></span>${icon('chevron')}
+      </button>
+    </section>
+
+    <section class="section compact-section home-levels">
+      <div class="section-heading"><div><span class="section-kicker">AI LADDER</span><h2>五重棋力，点选即战</h2><p>最高两档使用 Rapfi 冠军同源核心与官方 mix9svq NNUE，自适应把时间留给真正复杂的局面。</p></div></div>
+      <div class="level-grid interactive-levels">${LEVELS.map((level) => `<button class="level-card ${level.id >= 4 ? 'extreme' : ''}" data-action="open-ai" data-level="${level.id}"><span class="level-number">0${level.id}</span><span class="level-strength">${Array.from({ length: 5 }, (_, index) => `<i class="${index < level.id ? 'on' : ''}"></i>`).join('')}</span><h3>${level.name}</h3><p>${level.subtitle}</p><span class="level-enter">立即挑战 ${icon('arrow')}</span></button>`).join('')}</div>
+    </section>
+
+    ${renderFooter()}
   </main>`
 }
 
@@ -340,7 +280,7 @@ function renderFeatures() {
   return `<main class="main">
     <div class="page-head feature-head"><div><span class="eyebrow"><i class="eyebrow-dot"></i> CAPABILITY MATRIX</span><h1>一座完整的<br><span class="gradient-word">智能棋室。</span></h1><p>每项能力都可直接进入，每份数据都默认留在你的设备。</p></div><div class="readiness-card"><small>SYSTEM STATUS</small><span><i></i>AI 引擎 <b>${status.engine}</b></span><span><i></i>远程联机 <b>${status.online}</b></span><span><i></i>桌面应用 <b data-install-status>${status.pwa}</b></span></div></div>
     <section class="module-grid">${modules.map((module, index) => `<button class="module-card module-${index + 1}" ${module.view ? `data-view="${module.view}"` : `data-action="${module.action}"`} ${module.id ? `data-id="${module.id}"` : ''}><span class="module-top"><i class="module-icon">${icon(module.icon)}</i><em>${escapeHtml(module.status)}</em></span><span class="module-copy"><strong>${module.title}</strong><small>${module.desc}</small></span><span class="module-cta">${module.cta}${icon('arrow')}</span></button>`).join('')}</section>
-    <section class="data-utility glass-panel"><div><span class="section-kicker">DEVICE & DATA</span><h2>在任意设备，带走整座棋室</h2><p>导出一个弈境备份，即可迁移主题、棋谱、未完对局与分析结果。</p></div><div class="utility-actions"><button class="secondary-button" data-action="install-pwa">${icon('install')}安装到桌面</button><button class="secondary-button" data-action="export-backup">${icon('download')}导出完整备份</button><button class="primary-button" data-action="import-backup">${icon('upload')}导入备份</button></div><input id="backup-file" type="file" accept=".json,application/json" hidden></section>
+    <section class="data-utility glass-panel"><div><span class="section-kicker">DEVICE & DATA</span><h2>在任意设备，带走整座棋室</h2><p>导出一个雾弈备份，即可迁移主题、棋谱、未完对局与分析结果。</p></div><div class="utility-actions"><button class="secondary-button" data-action="install-pwa">${icon('install')}安装到桌面</button><button class="secondary-button" data-action="export-backup">${icon('download')}导出完整备份</button><button class="primary-button" data-action="import-backup">${icon('upload')}导入备份</button></div><input id="backup-file" type="file" accept=".json,application/json" hidden></section>
     ${renderFooter()}
   </main>`
 }
@@ -390,20 +330,12 @@ function filteredHistory() {
   })
 }
 
-function recordModeLabel(record) {
-  if (record.mode === 'online') return '远程联机'
-  if (record.mode === 'local') return '双人同屏'
-  if (record.mode === 'coach') return `AI 教学 · ${record.levelName || ''}`
-  if (record.mode === 'ai') return `AI 对决 · ${record.levelName || ''}`
-  return '导入棋谱'
-}
-
 function recordsGridHtml() {
   const records = filteredHistory()
   if (!records.length) return `<section class="record-empty glass-panel"><span class="feature-icon">${icon('history')}</span><h2>${state.history.length ? '没有符合条件的棋谱' : '这里还没有棋谱'}</h2><p class="hero-copy" style="margin:0 auto 1rem">${state.history.length ? '调整筛选条件再试一次。' : '完成第一局后，棋谱会自动出现在这里。'}</p>${state.history.length ? '' : '<button class="primary-button" data-action="open-ai">开始一局</button>'}</section>`
   return records.map((record) => `<article class="record-card">
     <div class="record-top"><span>${formatDate(record.endedAt || record.startedAt)}</span><span class="result-badge result-${humanResult(record)}">${escapeHtml(resultLabel(record))}</span></div>
-    <h3>${escapeHtml(record.title || '五子棋对局')}</h3><p>${escapeHtml(record.blackName)} · 黑　vs　${escapeHtml(record.whiteName)} · 白<br>${record.moves.length} 手 · ${escapeHtml(recordModeLabel(record))}</p>
+    <h3>${escapeHtml(record.title || '五子棋对局')}</h3><p>${escapeHtml(record.blackName)} · 黑　vs　${escapeHtml(record.whiteName)} · 白<br>${record.moves.length} 手 · ${record.mode === 'online' ? '远程联机' : record.mode === 'ai' ? `AI ${record.levelName || ''}` : '导入棋谱'}</p>
     <div class="record-actions"><button class="ghost-button" data-action="replay" data-id="${record.id}">${icon('play')}智能复盘</button><button class="ghost-button" data-action="export" data-id="${record.id}">${icon('download')}SGF</button><button class="ghost-button danger" data-action="delete-record" data-id="${record.id}" aria-label="删除棋谱">${icon('trash')}</button></div>
   </article>`).join('')
 }
@@ -412,7 +344,7 @@ function renderRecords() {
   return `<main class="main">
     <div class="page-head"><div><span class="eyebrow"><i class="eyebrow-dot"></i> LOCAL KIFU</span><h1>我的棋谱</h1><p>搜索、筛选、导出，再回到任何一手。</p></div><button class="secondary-button" data-action="import-record">${icon('upload')}导入棋谱</button></div>
     <input id="record-file" type="file" accept=".sgf,.json,application/json,text/plain" hidden>
-    <section class="filter-bar glass-panel"><label class="search-field">${icon('search')}<input id="record-search" value="${escapeHtml(state.filters.query)}" placeholder="搜索标题、对手或等级"></label><select data-record-filter="mode"><option value="all">全部模式</option><option value="ai" ${state.filters.mode === 'ai' ? 'selected' : ''}>AI 对决</option><option value="coach" ${state.filters.mode === 'coach' ? 'selected' : ''}>AI 教学</option><option value="local" ${state.filters.mode === 'local' ? 'selected' : ''}>双人同屏</option><option value="online" ${state.filters.mode === 'online' ? 'selected' : ''}>远程联机</option><option value="imported" ${state.filters.mode === 'imported' ? 'selected' : ''}>导入棋谱</option></select><select data-record-filter="result"><option value="all">全部结果</option><option value="win" ${state.filters.result === 'win' ? 'selected' : ''}>我的胜局</option><option value="loss" ${state.filters.result === 'loss' ? 'selected' : ''}>我的负局</option><option value="draw" ${state.filters.result === 'draw' ? 'selected' : ''}>和棋</option></select><select data-record-filter="level"><option value="all">全部等级</option>${LEVELS.map((level) => `<option value="${level.id}" ${state.filters.level === String(level.id) ? 'selected' : ''}>${level.name}</option>`).join('')}</select><select data-record-filter="date"><option value="all">全部日期</option><option value="7" ${state.filters.date === '7' ? 'selected' : ''}>近 7 天</option><option value="30" ${state.filters.date === '30' ? 'selected' : ''}>近 30 天</option></select></section>
+    <section class="filter-bar glass-panel"><label class="search-field">${icon('search')}<input id="record-search" value="${escapeHtml(state.filters.query)}" placeholder="搜索标题、对手或等级"></label><select data-record-filter="mode"><option value="all">全部模式</option><option value="ai" ${state.filters.mode === 'ai' ? 'selected' : ''}>AI 对战</option><option value="online" ${state.filters.mode === 'online' ? 'selected' : ''}>远程联机</option><option value="imported" ${state.filters.mode === 'imported' ? 'selected' : ''}>导入棋谱</option></select><select data-record-filter="result"><option value="all">全部结果</option><option value="win" ${state.filters.result === 'win' ? 'selected' : ''}>我的胜局</option><option value="loss" ${state.filters.result === 'loss' ? 'selected' : ''}>我的负局</option><option value="draw" ${state.filters.result === 'draw' ? 'selected' : ''}>和棋</option></select><select data-record-filter="level"><option value="all">全部等级</option>${LEVELS.map((level) => `<option value="${level.id}" ${state.filters.level === String(level.id) ? 'selected' : ''}>${level.name}</option>`).join('')}</select><select data-record-filter="date"><option value="all">全部日期</option><option value="7" ${state.filters.date === '7' ? 'selected' : ''}>近 7 天</option><option value="30" ${state.filters.date === '30' ? 'selected' : ''}>近 30 天</option></select></section>
     <div class="record-summary"><span>共 ${filteredHistory().length} 份棋谱</span><button class="chip-button" data-action="clear-filters">清除筛选</button></div>
     <div class="record-grid">${recordsGridHtml()}</div>${renderFooter()}
   </main>`
@@ -421,7 +353,7 @@ function renderRecords() {
 function renderLearn() {
   return `<main class="main">
     <div class="page-head"><div><span class="eyebrow"><i class="eyebrow-dot"></i> WORLD KIFU</span><h1>世界棋谱学堂</h1><p>已于 2026 年 8 月核对的权威赛事与顶尖棋手资源。</p></div></div>
-    <div class="notice">RIF 官方棋谱库不允许把其内容复制到其他在线系统，因此弈境只提供经过核实的官方直达入口，并用原创局面提供离线训练。</div>
+    <div class="notice">RIF 官方棋谱库不允许把其内容复制到其他在线系统，因此雾弈只提供经过核实的官方直达入口，并用原创局面提供离线训练。</div>
     <div class="learn-grid"><section><div class="section-heading"><div><span class="section-kicker">VERIFIED SOURCES</span><h2>权威棋谱源</h2><p>世界冠军、人类赛事与顶级 AI 实战。</p></div></div><div class="source-list">${SOURCES.map((source) => `<a class="source-card" href="${source.url}" target="_blank" rel="noopener noreferrer"><span class="source-logo">${source.abbr}</span><span class="source-copy"><strong>${source.title}</strong><small>${source.desc}</small></span><span class="external-arrow">${icon('external')}</span></a>`).join('')}</div></section><section><div class="section-heading"><div><span class="section-kicker">TACTICAL LAB</span><h2>战术训练</h2><p>原创局面，不依赖网络也能练习。</p></div></div><div class="training-list">${PUZZLES.map((puzzle, index) => `<article class="training-card"><h3>第 ${index + 1} 课 · ${puzzle.title}</h3><p>${puzzle.desc}</p><div class="progress-line"><i style="width:${34 + index * 24}%"></i></div><button class="ghost-button" style="margin-top:.8rem;width:100%" data-action="puzzle" data-id="${puzzle.id}">${icon('play')}开始解题</button></article>`).join('')}</div></section></div>${renderFooter()}
   </main>`
 }
@@ -431,47 +363,29 @@ function currentTurnText(game) {
   if (game.status === 'ended') return game.resultText
   if (game.thinking) return `${LEVELS[game.level - 1]?.name || 'AI'} 正在推演`
   if (game.mode === 'online') return game.current === game.humanSide ? '轮到你落子' : '等待对手落子'
-  if (game.mode === 'local') return `${game.current === BLACK ? '黑方' : '白方'}回合`
   return game.current === game.humanSide ? '轮到你落子' : 'AI 正在思考'
-}
-
-function situationName(game) {
-  if (!game || game.status === 'ended') return game?.resultText || '对局结束'
-  const count = game.moves.length
-  if (count === 0) return '开局 · 天元争夺'
-  if (count <= 6) return '开局 · 布局展开'
-  if (count <= 20) return '中盘 · 攻防试探'
-  if (count <= 45) return '中盘 · 战术交锋'
-  return '残局 · 胜负收束'
 }
 
 function playerCard(side, name, game) {
   const active = game.status === 'playing' && game.current === side
   const isAi = game.aiSide === side
   const thinking = active && isAi && game.thinking
-  const role = game.mode === 'local'
-    ? `本地玩家 · ${side === BLACK ? '黑方' : '白方'}`
-    : game.humanSide === side ? `你 · ${side === BLACK ? '黑方' : '白方'}` : isAi ? `AI · ${side === BLACK ? '黑方' : '白方'}` : `对手 · ${side === BLACK ? '黑方' : '白方'}`
+  const role = game.humanSide === side ? `你 · ${side === BLACK ? '黑方' : '白方'}` : isAi ? `AI · ${side === BLACK ? '黑方' : '白方'}` : `对手 · ${side === BLACK ? '黑方' : '白方'}`
   return `<div class="player-card ${active ? 'active' : ''} ${thinking ? 'thinking-player' : ''}"><span class="avatar-wrap"><i class="stone-avatar ${side === BLACK ? 'black' : 'white'}"></i>${thinking ? '<i class="thinking-orbit"></i>' : ''}</span><span class="player-info"><strong>${escapeHtml(name)}</strong><small>${role}</small></span>${thinking ? '<span class="micro-thinking"><i></i><i></i><i></i></span>' : active ? '<span class="turn-badge">行棋</span>' : ''}</div>`
 }
 
 function renderGame() {
   const game = state.game
-  const engineMode = isEngineMode(game)
-  const gameLabel = game.mode === 'online' ? `房间 ${game.roomCode || ''}` : game.mode === 'local' ? '双人同屏' : game.mode === 'coach' ? `AI 教学 · ${LEVELS[game.level - 1]?.name || ''}` : `AI 对决 · ${LEVELS[game.level - 1]?.name || ''}`
   return `<main class="main game-main">
     <button class="back-button" data-view="home">${icon('back')}返回棋室</button>
-    ${game.mode === 'coach' ? `<section class="coach-strip glass-panel"><span class="coach-orb">${icon('bulb')}</span><div><small>AI 教练</small><strong>${escapeHtml(state.coach.text)}</strong></div><button class="chip-button" data-action="coach-hint" ${state.coach.thinking || game.thinking || game.current !== game.humanSide ? 'disabled' : ''}>${state.coach.thinking ? '分析中…' : '提示下一手'}</button></section>` : ''}
     <div class="game-layout"><section class="board-panel glass-panel">
-      <div class="board-topline"><span class="status-pill ${game.thinking ? 'thinking-status' : ''}"><i class="pulse"></i><span>${escapeHtml(currentTurnText(game))}</span>${game.thinking ? '<b id="thinking-clock">0.0s</b>' : ''}</span><span class="game-meta">${escapeHtml(gameLabel)}　${game.moves.length} 手</span></div>
-      ${game.showSituation ? `<div class="situation-bar"><span>${icon('spark')}${escapeHtml(situationName(game))}</span><small>仅描述局势，不提供落子暗示</small></div>` : ''}
+      <div class="board-topline"><span class="status-pill ${game.thinking ? 'thinking-status' : ''}"><i class="pulse"></i><span>${escapeHtml(currentTurnText(game))}</span>${game.thinking ? '<b id="thinking-clock">0.0s</b>' : ''}</span><span class="game-meta">${game.mode === 'online' ? `房间 ${game.roomCode || ''}` : `AI · ${LEVELS[game.level - 1]?.name || ''}`}　${game.moves.length} 手</span></div>
       <div class="canvas-wrap"><canvas id="game-board" aria-label="十五路五子棋棋盘"></canvas></div>
-      ${state.pendingMove ? `<div class="move-confirm-bar"><span><small>预览落点</small><strong>${moveLabel(state.pendingMove)}</strong></span><button class="ghost-button" data-action="cancel-move">取消</button><button class="primary-button" data-action="confirm-move">确认落子</button></div>` : ''}
     </section><aside class="side-panel glass-panel">
       ${playerCard(BLACK, game.blackName, game)}${playerCard(WHITE, game.whiteName, game)}<div class="panel-divider"></div>
-      ${engineMode ? `<div class="analysis-card"><div class="analysis-head"><strong id="engine-name">${escapeHtml(state.analysis.engine)}</strong><span>${game.thinking ? '自适应算力' : game.mode === 'coach' ? '教学引擎待命' : '实时计算'}</span></div><div class="analysis-grid"><span class="analysis-stat"><strong id="depth-value">${state.analysis.depth}</strong><small>深度</small></span><span class="analysis-stat"><strong id="nodes-value">${state.analysis.nodes}</strong><small>节点</small></span><span class="analysis-stat"><strong id="elapsed-value">${state.analysis.elapsed}</strong><small>耗时</small></span></div>${game.thinking ? `<div class="thinking-track"><i id="thinking-progress" style="width:2%"></i></div>` : ''}</div>` : game.mode === 'online' ? `<div class="analysis-card"><div class="analysis-head"><strong>端到端实时连接</strong><span>${escapeHtml(state.onlineStatus?.text || '已连接')}</span></div><div class="progress-line"><i style="width:${state.onlineStatus?.phase === 'connected' ? '100' : '55'}%"></i></div></div>` : `<div class="analysis-card local-match-card"><div class="analysis-head"><strong>双人同屏对弈</strong><span>本机轮流落子</span></div><p>黑方先行，棋谱和胜负结果会在结束后自动保存。</p></div>`}
+      ${game.mode === 'ai' ? `<div class="analysis-card"><div class="analysis-head"><strong id="engine-name">${escapeHtml(state.analysis.engine)}</strong><span>${game.thinking ? '自适应算力' : '实时计算'}</span></div><div class="analysis-grid"><span class="analysis-stat"><strong id="depth-value">${state.analysis.depth}</strong><small>深度</small></span><span class="analysis-stat"><strong id="nodes-value">${state.analysis.nodes}</strong><small>节点</small></span><span class="analysis-stat"><strong id="elapsed-value">${state.analysis.elapsed}</strong><small>耗时</small></span></div>${game.thinking ? `<div class="thinking-track"><i id="thinking-progress" style="width:2%"></i></div>` : ''}</div>` : `<div class="analysis-card"><div class="analysis-head"><strong>端到端加密连接</strong><span>${escapeHtml(state.onlineStatus?.text || '已连接')}</span></div><div class="progress-line"><i style="width:${state.onlineStatus?.phase === 'connected' ? '100' : '55'}%"></i></div></div>`}
       <div class="moves-box"><div class="moves-title"><span>落子记录</span><span>${game.moves.length} / 225</span></div><div class="move-chips">${game.moves.slice(-36).map((move, index) => `<span class="move-chip"><b>${game.moves.length - Math.min(36, game.moves.length) + index + 1}</b>${moveLabel(move)}</span>`).join('') || '<span class="empty-hint">等待第一手…</span>'}</div></div>
-      <div class="game-toolbar">${game.mode !== 'online' ? `<button data-action="undo">${icon('undo')}<span>悔棋</span></button>` : `<button data-action="save-current">${icon('download')}<span>棋谱</span></button>`}<button data-action="restart">${icon('refresh')}<span>重开</span></button>${game.mode === 'coach' ? `<button data-action="coach-hint">${icon('bulb')}<span>提示</span></button>` : `<button data-action="game-tools">${icon('more')}<span>更多</span></button>`}<button class="danger" data-action="resign">${icon('flag')}<span>认输</span></button></div>
+      <div class="control-grid">${game.mode === 'ai' ? `<button class="ghost-button" data-action="undo">${icon('undo')}悔棋</button>` : ''}<button class="ghost-button" data-action="restart">${icon('refresh')}重开</button><button class="ghost-button" data-action="save-current">${icon('download')}导出</button><button class="ghost-button danger" data-action="resign">${icon('flag')}认输</button></div>
     </aside></div>
   </main>`
 }
@@ -512,28 +426,18 @@ function renderReplay() {
   return `<main class="main game-main"><button class="back-button" data-view="records">${icon('back')}返回棋谱</button>
     <div class="page-head"><div><span class="eyebrow"><i class="eyebrow-dot"></i> INTELLIGENT REPLAY</span><h1>${escapeHtml(record.title || '棋谱复盘')}</h1><p>${escapeHtml(record.blackName)} vs ${escapeHtml(record.whiteName)} · ${resultLabel(record)}</p></div><button class="secondary-button" data-action="export" data-id="${record.id}">${icon('download')}导出 SGF</button></div>
     <div class="game-layout"><section class="board-panel glass-panel"><div class="board-topline"><span class="status-pill"><i class="pulse"></i>${state.replayIndex === 0 ? '开局' : `第 ${state.replayIndex} 手 · ${moveLabel(move)}`}</span><span class="game-meta">${state.replayIndex} / ${record.moves.length}</span></div><div class="canvas-wrap"><canvas id="replay-board"></canvas></div></section>
-    <aside class="side-panel replay-panel glass-panel">${playerCard(BLACK, record.blackName, { mode: record.mode, status: 'ended', current: 0, humanSide: record.blackName === '你' ? BLACK : WHITE, aiSide: isEngineMode(record.mode) ? (record.blackName === '你' ? WHITE : BLACK) : null, thinking: false })}${playerCard(WHITE, record.whiteName, { mode: record.mode, status: 'ended', current: 0, humanSide: record.whiteName === '你' ? WHITE : BLACK, aiSide: isEngineMode(record.mode) ? (record.whiteName === '你' ? BLACK : WHITE) : null, thinking: false })}<div class="moves-box replay-moves"><div class="move-chips">${record.moves.map((item, index) => { const annotation = state.replayAnnotations[index]; return `<button class="move-chip ${index + 1 === state.replayIndex ? 'active' : ''} ${annotation?.tag || ''}" data-action="replay-jump" data-index="${index + 1}"><b>${index + 1}</b>${moveLabel(item)}${annotation?.tag ? '<i></i>' : ''}</button>` }).join('')}</div></div><input id="replay-range" type="range" min="0" max="${record.moves.length}" value="${state.replayIndex}"><div class="control-grid"><button class="ghost-button" data-action="replay-prev">${icon('back')}上一步</button><button class="ghost-button" data-action="replay-next">下一步${icon('chevron')}</button><button class="primary-button" style="grid-column:1/-1" data-action="replay-auto">${icon('play')}${state.replayTimer ? '暂停播放' : '自动播放'}</button></div></aside></div>
+    <aside class="side-panel replay-panel glass-panel">${playerCard(BLACK, record.blackName, { status: 'ended', current: 0, humanSide: record.blackName === '你' ? BLACK : WHITE, aiSide: record.mode === 'ai' ? (record.blackName === '你' ? WHITE : BLACK) : null, thinking: false })}${playerCard(WHITE, record.whiteName, { status: 'ended', current: 0, humanSide: record.whiteName === '你' ? WHITE : BLACK, aiSide: record.mode === 'ai' ? (record.whiteName === '你' ? BLACK : WHITE) : null, thinking: false })}<div class="moves-box replay-moves"><div class="move-chips">${record.moves.map((item, index) => { const annotation = state.replayAnnotations[index]; return `<button class="move-chip ${index + 1 === state.replayIndex ? 'active' : ''} ${annotation?.tag || ''}" data-action="replay-jump" data-index="${index + 1}"><b>${index + 1}</b>${moveLabel(item)}${annotation?.tag ? '<i></i>' : ''}</button>` }).join('')}</div></div><input id="replay-range" type="range" min="0" max="${record.moves.length}" value="${state.replayIndex}"><div class="control-grid"><button class="ghost-button" data-action="replay-prev">${icon('back')}上一步</button><button class="ghost-button" data-action="replay-next">下一步${icon('chevron')}</button><button class="primary-button" style="grid-column:1/-1" data-action="replay-auto">${icon('play')}${state.replayTimer ? '暂停播放' : '自动播放'}</button></div></aside></div>
     ${renderReviewInsight(record)}
   </main>`
 }
 
 function renderFooter() {
-  return `<footer class="footer"><span>弈境五子棋 · Champion intelligence, quietly local.</span><span>15×15 自由规则 · 数据默认只保存在本机</span></footer>`
+  return `<footer class="footer"><span>雾弈 · Champion intelligence, quietly local.</span><span>15×15 自由规则 · 数据默认只保存在本机</span></footer>`
 }
 
 function renderModal() {
   if (!state.modal) return ''
-  if (state.modal.type === 'play-settings') {
-    const engineMode = state.lobbyMode === 'ai' || state.lobbyMode === 'coach'
-    return `<div class="modal-backdrop settings-backdrop" data-action="close-modal"><section class="modal settings-modal" role="dialog" aria-modal="true" aria-label="玩法设置" data-modal><div class="modal-head"><div><span class="section-kicker">MATCH SETTINGS</span><h2>玩法设置</h2><p>${escapeHtml(lobbyPlaySummary())}</p></div><button class="modal-close" data-action="close-modal">${icon('close')}</button></div>
-      ${engineMode ? `<div class="settings-group"><div class="settings-title"><strong>AI 棋力</strong><small>${state.lobbyMode === 'coach' ? '教学对手同样使用真实引擎' : '最高两档使用官方 NNUE'}</small></div><div class="settings-level-grid">${LEVELS.map((level) => `<button class="settings-choice ${state.lobbyLevel === level.id ? 'selected' : ''}" data-action="select-lobby-level" data-level="${level.id}"><small>0${level.id}</small><strong>${level.name}</strong><span>${level.subtitle}</span></button>`).join('')}</div></div>
-      <div class="settings-group"><div class="settings-title"><strong>你的执子</strong><small>人机与教学局生效</small></div><div class="side-choice"><button class="select-card ${state.lobbySide === BLACK ? 'selected' : ''}" data-action="select-lobby-side" data-side="1"><i class="stone-avatar black"></i><strong>执黑先行</strong></button><button class="select-card ${state.lobbySide === WHITE ? 'selected' : ''}" data-action="select-lobby-side" data-side="2"><i class="stone-avatar white"></i><strong>执白后行</strong></button></div></div>` : `<div class="notice settings-mode-notice">${state.lobbyMode === 'local' ? '双人同屏固定黑方先行，双方在同一设备轮流落子。' : '房主执黑、加入者执白，连接成功后自动开始。'}</div>`}
-      <div class="settings-group"><div class="settings-title"><strong>对局辅助</strong><small>只改变交互，不降低 AI 强度</small></div><div class="settings-toggle-list"><button data-action="toggle-setting" data-key="confirmMove"><span><strong>落子确认</strong><small>先预览，再确认落子</small></span><i class="switch ${state.confirmMove ? 'on' : ''}"><b></b></i></button><button data-action="toggle-setting" data-key="showSituation"><span><strong>局势名称</strong><small>仅显示阶段名称，不给提示</small></span><i class="switch ${state.showSituation ? 'on' : ''}"><b></b></i></button><button data-action="toggle-setting" data-key="showMoveNumbers"><span><strong>棋子手数</strong><small>在棋子上显示落子顺序</small></span><i class="switch ${state.showMoveNumbers ? 'on' : ''}"><b></b></i></button></div></div>
-      <div class="settings-fixed"><span>${icon('grid')}<span><strong>15 × 15 标准棋盘</strong><small>与 Rapfi 冠军模型及现有棋谱保持一致</small></span></span><i>固定</i></div>
-      <div class="modal-actions"><button class="primary-button" data-action="close-modal">完成设置${icon('check')}</button></div></section></div>`
-  }
   if (state.modal.type === 'theme') return `<div class="modal-backdrop" data-action="close-modal"><section class="modal" role="dialog" aria-modal="true" aria-label="选择主题" data-modal><div class="modal-head"><div><h2>选择你的雾色</h2><p>浅色毛玻璃与棋盘会随主题一起变化。</p></div><button class="modal-close" data-action="close-modal">${icon('close')}</button></div><div class="theme-grid">${THEMES.map((theme) => `<button class="theme-card ${state.theme === theme.id ? 'selected' : ''}" data-action="select-theme" data-theme-id="${theme.id}" style="--preview-bg:${theme.bg};--preview-color:${theme.color};--preview-accent:${theme.accent}"><span class="theme-preview"><i></i></span><span>${theme.name}</span></button>`).join('')}</div></section></div>`
-  if (state.modal.type === 'game-tools') return `<div class="modal-backdrop settings-backdrop" data-action="close-modal"><section class="modal game-tools-modal" role="dialog" aria-modal="true" aria-label="更多对局工具" data-modal><div class="modal-head"><div><span class="section-kicker">GAME TOOLS</span><h2>更多操作</h2><p>棋盘显示与棋谱导出。</p></div><button class="modal-close" data-action="close-modal">${icon('close')}</button></div><div class="tool-sheet-list"><button data-action="theme"><span>${icon('palette')}<span><strong>棋盘与主题</strong><small>${THEMES.find((theme) => theme.id === state.theme)?.name}</small></span></span>${icon('chevron')}</button><button data-action="toggle-game-numbers"><span>${icon('history')}<span><strong>显示棋子手数</strong><small>${state.game?.showMoveNumbers ? '当前已开启' : '当前已关闭'}</small></span></span><i class="switch ${state.game?.showMoveNumbers ? 'on' : ''}"><b></b></i></button><button data-action="export-json"><span>${icon('download')}<span><strong>导出 JSON</strong><small>包含完整落子与对局信息</small></span></span>${icon('chevron')}</button><button data-action="export-png"><span>${icon('download')}<span><strong>保存棋盘图片</strong><small>导出当前棋盘 PNG</small></span></span>${icon('chevron')}</button><button data-action="save-current"><span>${icon('history')}<span><strong>导出 SGF 棋谱</strong><small>通用棋谱交换格式</small></span></span>${icon('chevron')}</button></div></section></div>`
   if (state.modal.type === 'ai') {
     const selected = state.modal.level || 5
     return `<div class="modal-backdrop" data-action="close-modal"><section class="modal" role="dialog" aria-modal="true" data-modal><div class="modal-head"><div><h2>选择挑战强度</h2><p>最高两档使用 Rapfi 2026 冠军同源核心与官方 mix9svq NNUE。</p></div><button class="modal-close" data-action="close-modal">${icon('close')}</button></div><div class="engine-ready ${state.aiWarmup}"><i></i><span>${state.aiWarmup === 'ready' ? '官方 NNUE 已预热' : state.aiWarmup === 'loading' ? '正在校验并预热官方 NNUE' : state.aiWarmup === 'error' ? 'NNUE 加载失败，将使用兼容引擎' : 'NNUE 将在需要时加载'}</span></div><div class="select-list">${LEVELS.map((level) => `<button class="select-card ${selected === level.id ? 'selected' : ''}" data-action="select-level" data-level="${level.id}"><span class="select-number">${level.id}</span><span><strong>${level.name}</strong><small>${level.subtitle}</small></span>${level.id >= 4 ? '<span class="tag">极难</span>' : ''}</button>`).join('')}</div><span class="field-label">选择执子</span><div class="side-choice"><button class="select-card ${state.modal.side !== WHITE ? 'selected' : ''}" data-action="select-side" data-side="1"><i class="stone-avatar black"></i><strong>执黑先行</strong></button><button class="select-card ${state.modal.side === WHITE ? 'selected' : ''}" data-action="select-side" data-side="2"><i class="stone-avatar white"></i><strong>执白后行</strong></button></div><div class="modal-actions"><button class="primary-button" data-action="start-ai">开始对弈${icon('arrow')}</button></div></section></div>`
@@ -552,7 +456,7 @@ function renderModal() {
     const backup = state.modal.payload
     return `<div class="modal-backdrop"><section class="modal" role="dialog" aria-modal="true" data-modal><div class="modal-head"><div><h2>确认导入完整备份</h2><p>同 ID 数据将保留更新时间较新的版本。</p></div><button class="modal-close" data-action="close-modal">${icon('close')}</button></div><div class="backup-preview"><span><small>棋谱</small><strong>${backup.history?.length || 0}</strong></span><span><small>未完对局</small><strong>${backup.unfinishedGame ? 1 : 0}</strong></span><span><small>分析缓存</small><strong>${Object.keys(backup.analysis || {}).length}</strong></span></div><div class="notice">数据只会写入当前浏览器，不会上传到服务器。</div><div class="modal-actions"><button class="secondary-button" data-action="close-modal">取消</button><button class="primary-button" data-action="confirm-backup">确认合并</button></div></section></div>`
   }
-  if (state.modal.type === 'install') return `<div class="modal-backdrop" data-action="close-modal"><section class="modal" role="dialog" aria-modal="true" data-modal><div class="modal-head"><div><h2>安装弈境五子棋到桌面</h2><p>安装后可像原生应用一样全屏打开。</p></div><button class="modal-close" data-action="close-modal">${icon('close')}</button></div><div class="notice">iPhone：使用 Safari 的“分享 → 添加到主屏幕”。<br>安卓：打开浏览器菜单，选择“安装应用”或“添加到主屏幕”。</div></section></div>`
+  if (state.modal.type === 'install') return `<div class="modal-backdrop" data-action="close-modal"><section class="modal" role="dialog" aria-modal="true" data-modal><div class="modal-head"><div><h2>安装雾弈到桌面</h2><p>安装后可像原生应用一样全屏打开。</p></div><button class="modal-close" data-action="close-modal">${icon('close')}</button></div><div class="notice">iPhone：使用 Safari 的“分享 → 添加到主屏幕”。<br>安卓：打开浏览器菜单，选择“安装应用”或“添加到主屏幕”。</div></section></div>`
   return ''
 }
 
@@ -573,7 +477,7 @@ function setView(view) {
 }
 
 function gameSnapshot(game) {
-  return { id: game.id, mode: game.mode, moves: game.moves, current: game.current, humanSide: game.humanSide, aiSide: game.aiSide, level: game.level, startedAt: game.startedAt, blackName: game.blackName, whiteName: game.whiteName, status: game.status, confirmMove: game.confirmMove, showSituation: game.showSituation, showMoveNumbers: game.showMoveNumbers }
+  return { id: game.id, mode: game.mode, moves: game.moves, current: game.current, humanSide: game.humanSide, aiSide: game.aiSide, level: game.level, startedAt: game.startedAt, blackName: game.blackName, whiteName: game.whiteName, status: game.status }
 }
 
 function persistActiveGame() {
@@ -585,34 +489,26 @@ function persistActiveGame() {
 
 function newGame(mode, options = {}) {
   const humanSide = options.humanSide || BLACK
-  const engineMode = isEngineMode(mode)
-  const aiSide = engineMode ? other(humanSide) : null
+  const aiSide = mode === 'ai' ? other(humanSide) : null
   if (mode === 'ai') clearUnfinishedGame()
-  const level = options.level || state.lobbyLevel || 5
-  const aiName = mode === 'coach' ? `教练 · ${LEVELS[level - 1].name}` : LEVELS[level - 1].name
-  const blackName = engineMode ? (humanSide === BLACK ? '你' : aiName) : mode === 'local' ? '黑方玩家' : (humanSide === BLACK ? '你' : '远程对手')
-  const whiteName = engineMode ? (humanSide === WHITE ? '你' : aiName) : mode === 'local' ? '白方玩家' : (humanSide === WHITE ? '你' : '远程对手')
   state.game = {
     id: crypto.randomUUID(), mode, board: createBoard(), moves: [], current: BLACK, status: 'playing', humanSide, aiSide,
-    level, startedAt: new Date().toISOString(), thinking: false,
-    blackName, whiteName,
+    level: options.level || 5, startedAt: new Date().toISOString(), thinking: false,
+    blackName: mode === 'ai' ? (humanSide === BLACK ? '你' : LEVELS[(options.level || 5) - 1].name) : (humanSide === BLACK ? '你' : '远程对手'),
+    whiteName: mode === 'ai' ? (humanSide === WHITE ? '你' : LEVELS[(options.level || 5) - 1].name) : (humanSide === WHITE ? '你' : '远程对手'),
     roomCode: options.roomCode || null, winnerLine: null, resultText: '', resultCode: '',
-    confirmMove: state.confirmMove, showSituation: state.showSituation, showMoveNumbers: state.showMoveNumbers,
   }
-  state.pendingMove = null
-  state.coach = { thinking: false, text: '需要时可调用冠军引擎分析下一手。', suggested: null }
-  state.analysis = { engine: engineMode && level >= 4 ? (state.aiWarmup === 'error' ? FALLBACK_DISPLAY_NAME : RAPFI_DISPLAY_NAME) : '弈境策略引擎', depth: '—', nodes: '—', elapsed: '—', budget: 0 }
+  state.analysis = { engine: mode === 'ai' && options.level >= 4 ? (state.aiWarmup === 'error' ? FALLBACK_DISPLAY_NAME : RAPFI_DISPLAY_NAME) : '雾弈策略引擎', depth: '—', nodes: '—', elapsed: '—', budget: 0 }
   state.view = 'game'; state.modal = null
   persistActiveGame(); render()
-  if (engineMode && aiSide === BLACK) setTimeout(triggerAi, 180)
+  if (mode === 'ai' && aiSide === BLACK) setTimeout(triggerAi, 180)
 }
 
 function resumeGame() {
   const saved = loadUnfinishedGame()
   if (!saved || saved.mode !== 'ai' || saved.status !== 'playing') return toast('没有可继续的 AI 对局', 'error')
-  state.game = { ...saved, board: boardAtMove(saved.moves || []), thinking: false, winnerLine: null, resultText: '', resultCode: '', roomCode: null, confirmMove: saved.confirmMove ?? state.confirmMove, showSituation: saved.showSituation ?? state.showSituation, showMoveNumbers: saved.showMoveNumbers ?? state.showMoveNumbers }
-  state.pendingMove = null
-  state.analysis = { engine: saved.level >= 4 ? (state.aiWarmup === 'error' ? FALLBACK_DISPLAY_NAME : RAPFI_DISPLAY_NAME) : '弈境策略引擎', depth: '—', nodes: '—', elapsed: '—', budget: 0 }
+  state.game = { ...saved, board: boardAtMove(saved.moves || []), thinking: false, winnerLine: null, resultText: '', resultCode: '', roomCode: null }
+  state.analysis = { engine: saved.level >= 4 ? (state.aiWarmup === 'error' ? FALLBACK_DISPLAY_NAME : RAPFI_DISPLAY_NAME) : '雾弈策略引擎', depth: '—', nodes: '—', elapsed: '—', budget: 0 }
   state.view = 'game'; state.modal = null; render()
   if (state.game.current === state.game.aiSide) setTimeout(triggerAi, 180)
 }
@@ -621,22 +517,22 @@ function applyMove(x, y, side, remote = false) {
   const game = state.game
   if (!game || game.status !== 'playing' || side !== game.current || !play(game.board, x, y, side)) return false
   const move = { x, y, side, at: Date.now() }
-  game.moves.push(move); game.current = other(side); state.pendingMove = null; state.coach.suggested = null
+  game.moves.push(move); game.current = other(side)
   const won = winnerFrom(game.board, x, y)
   if (won) finishGame(side, `${side === BLACK ? '黑方' : '白方'}获胜`, `${side === BLACK ? 'B' : 'W'}+R`, won.line)
   else if (isFull(game.board)) finishGame(null, '和棋', '0', null)
   else persistActiveGame()
   if (game.mode === 'online' && !remote) room?.send({ type: 'move', move, index: game.moves.length })
   render()
-  if (isEngineMode(game) && game.status === 'playing' && game.current === game.aiSide) setTimeout(triggerAi, 140)
+  if (game.mode === 'ai' && game.status === 'playing' && game.current === game.aiSide) setTimeout(triggerAi, 140)
   return true
 }
 
 async function triggerAi() {
   const game = state.game
-  if (!game || !isEngineMode(game) || game.status !== 'playing' || game.current !== game.aiSide || game.thinking) return
+  if (!game || game.mode !== 'ai' || game.status !== 'playing' || game.current !== game.aiSide || game.thinking) return
   game.thinking = true
-  state.analysis = { engine: game.level >= 4 ? (state.aiWarmup === 'error' ? FALLBACK_DISPLAY_NAME : RAPFI_DISPLAY_NAME) : '弈境策略引擎', depth: '—', nodes: '—', elapsed: '0.0s', budget: adaptiveBudget(game.level, game.board, game.aiSide) }
+  state.analysis = { engine: game.level >= 4 ? (state.aiWarmup === 'error' ? FALLBACK_DISPLAY_NAME : RAPFI_DISPLAY_NAME) : '雾弈策略引擎', depth: '—', nodes: '—', elapsed: '0.0s', budget: adaptiveBudget(game.level, game.board, game.aiSide) }
   game.thinkingStartedAt = performance.now()
   render()
   const token = game.id
@@ -671,8 +567,7 @@ function finishGame(winner, text, code, line) {
 }
 
 function gameToRecord(game) {
-  const title = game.mode === 'online' ? '远程棋室对局' : game.mode === 'local' ? '双人同屏对局' : game.mode === 'coach' ? `AI 教学 · ${LEVELS[game.level - 1]?.name || ''}` : `挑战 ${LEVELS[game.level - 1]?.name || 'AI'}`
-  return { id: game.id, size: SIZE, title, mode: game.mode, level: game.level, levelName: LEVELS[game.level - 1]?.name, blackName: game.blackName, whiteName: game.whiteName, startedAt: game.startedAt, endedAt: game.endedAt || new Date().toISOString(), moves: game.moves, resultText: game.resultText || '未完', resultCode: game.resultCode || 'Void' }
+  return { id: game.id, size: SIZE, title: game.mode === 'online' ? '远程棋室对局' : `挑战 ${LEVELS[game.level - 1]?.name || 'AI'}`, mode: game.mode, level: game.level, levelName: LEVELS[game.level - 1]?.name, blackName: game.blackName, whiteName: game.whiteName, startedAt: game.startedAt, endedAt: game.endedAt || new Date().toISOString(), moves: game.moves, resultText: game.resultText || '未完', resultCode: game.resultCode || 'Void' }
 }
 
 function setupRoom() {
@@ -716,7 +611,6 @@ function drawBoard(canvas, board, moves = [], options = {}) {
   for (let index = 0; index < SIZE; index++) { const point = margin + index * step; context.beginPath(); context.moveTo(margin, point); context.lineTo(size - margin, point); context.stroke(); context.beginPath(); context.moveTo(point, margin); context.lineTo(point, size - margin); context.stroke() }
   context.fillStyle = context.strokeStyle
   for (const [x, y] of [[3, 3], [11, 3], [7, 7], [3, 11], [11, 11]]) { context.beginPath(); context.arc(margin + x * step, margin + y * step, Math.max(2, size / 155), 0, Math.PI * 2); context.fill() }
-  const moveNumbers = new Map(moves.map((move, index) => [at(move.x, move.y), index + 1]))
   for (let y = 0; y < SIZE; y++) for (let x = 0; x < SIZE; x++) {
     const side = board[at(x, y)]; if (!side) continue
     const centerX = margin + x * step; const centerY = margin + y * step; const radius = step * .43
@@ -725,15 +619,10 @@ function drawBoard(canvas, board, moves = [], options = {}) {
     if (side === BLACK) gradient.addColorStop(0, '#687385'), gradient.addColorStop(.43, '#252c3a'), gradient.addColorStop(1, '#0f141e')
     else gradient.addColorStop(0, '#fff'), gradient.addColorStop(.55, '#f2f5f9'), gradient.addColorStop(1, '#cfd6e2')
     context.fillStyle = gradient; context.beginPath(); context.arc(centerX, centerY, radius, 0, Math.PI * 2); context.fill(); context.restore()
-    if (options.showMoveNumbers) {
-      const number = moveNumbers.get(at(x, y)); if (number) { context.fillStyle = side === BLACK ? 'rgba(255,255,255,.9)' : 'rgba(35,46,68,.8)'; context.font = `700 ${Math.max(7, step * .28)}px system-ui`; context.textAlign = 'center'; context.textBaseline = 'middle'; context.fillText(number, centerX, centerY + .4) }
-    }
   }
   const last = moves[moves.length - 1]
   if (last) { const x = margin + last.x * step; const y = margin + last.y * step; context.strokeStyle = last.side === BLACK ? 'rgba(255,255,255,.8)' : 'rgba(65,78,104,.62)'; context.lineWidth = Math.max(1.5, size / 350); context.beginPath(); context.arc(x, y, step * .15, 0, Math.PI * 2); context.stroke() }
   if (options.hover && board[at(options.hover.x, options.hover.y)] === EMPTY) { context.globalAlpha = .24; context.fillStyle = options.hover.side === BLACK ? '#111827' : '#fff'; context.beginPath(); context.arc(margin + options.hover.x * step, margin + options.hover.y * step, step * .4, 0, Math.PI * 2); context.fill(); context.globalAlpha = 1 }
-  if (options.pending && board[at(options.pending.x, options.pending.y)] === EMPTY) { const x = margin + options.pending.x * step; const y = margin + options.pending.y * step; context.globalAlpha = .62; context.fillStyle = options.pending.side === BLACK ? '#141b28' : '#fff'; context.beginPath(); context.arc(x, y, step * .41, 0, Math.PI * 2); context.fill(); context.globalAlpha = 1; context.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--primary').trim(); context.lineWidth = Math.max(2, size / 230); context.beginPath(); context.arc(x, y, step * .5, 0, Math.PI * 2); context.stroke() }
-  if (options.suggested && board[at(options.suggested.x, options.suggested.y)] === EMPTY) { const x = margin + options.suggested.x * step; const y = margin + options.suggested.y * step; context.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--primary').trim(); context.globalAlpha = .18; context.beginPath(); context.arc(x, y, step * .47, 0, Math.PI * 2); context.fill(); context.globalAlpha = 1; context.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--primary').trim(); context.lineWidth = Math.max(2, size / 250); context.setLineDash([step * .16, step * .12]); context.beginPath(); context.arc(x, y, step * .53, 0, Math.PI * 2); context.stroke(); context.setLineDash([]) }
   if (options.winnerLine?.length) { const start = options.winnerLine[0]; const end = options.winnerLine.at(-1); context.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--primary').trim(); context.lineWidth = Math.max(3, size / 125); context.lineCap = 'round'; context.beginPath(); context.moveTo(margin + start.x * step, margin + start.y * step); context.lineTo(margin + end.x * step, margin + end.y * step); context.stroke() }
   canvas._metrics = { margin, step, size }
 }
@@ -748,18 +637,11 @@ function bindCanvas() {
   resizeObserver?.disconnect()
   const canvas = document.querySelector('#game-board')
   if (canvas && state.game) {
-    const redraw = () => drawBoard(canvas, state.game.board, state.game.moves, { hover: state.hover, pending: state.pendingMove, suggested: state.coach.suggested, showMoveNumbers: state.game.showMoveNumbers, winnerLine: state.game.winnerLine })
+    const redraw = () => drawBoard(canvas, state.game.board, state.game.moves, { hover: state.hover, winnerLine: state.game.winnerLine })
     redraw(); resizeObserver = new ResizeObserver(redraw); resizeObserver.observe(canvas)
     canvas.addEventListener('pointermove', (event) => { const point = canvasPoint(canvas, event); if (point?.x !== state.hover?.x || point?.y !== state.hover?.y) state.hover = point, redraw() })
     canvas.addEventListener('pointerleave', () => { state.hover = null; redraw() })
-    canvas.addEventListener('pointerdown', (event) => {
-      const point = canvasPoint(canvas, event); const game = state.game; const playableSide = game?.mode === 'local' ? game.current : game?.humanSide
-      if (!point || !game || game.status !== 'playing' || game.thinking || game.current !== playableSide || game.board[at(point.x, point.y)] !== EMPTY) return
-      if (game.confirmMove) {
-        if (state.pendingMove?.x === point.x && state.pendingMove?.y === point.y) { if (applyMove(point.x, point.y, playableSide)) vibrate(12) }
-        else state.pendingMove = { ...point, side: playableSide }, vibrate(7), render()
-      } else if (applyMove(point.x, point.y, playableSide)) vibrate(12)
-    })
+    canvas.addEventListener('pointerdown', (event) => { const point = canvasPoint(canvas, event); const game = state.game; if (!point || !game || game.status !== 'playing' || game.thinking || game.current !== game.humanSide) return; if (applyMove(point.x, point.y, game.humanSide)) vibrate(12) })
   }
   const replay = document.querySelector('#replay-board')
   if (replay && state.replay) { const redraw = () => drawBoard(replay, boardAtMove(state.replay.moves, state.replayIndex), state.replay.moves.slice(0, state.replayIndex)); redraw(); resizeObserver = new ResizeObserver(redraw); resizeObserver.observe(replay) }
@@ -799,7 +681,7 @@ function toast(message, type = '') {
 
 function exportRecord(record) {
   if (!record) return
-  const safe = (record.title || '弈境棋谱').replace(/[\\/:*?"<>|]/g, '-')
+  const safe = (record.title || '雾弈棋谱').replace(/[\\/:*?"<>|]/g, '-')
   downloadText(`${safe}.sgf`, recordToSgf(record), 'application/x-go-sgf;charset=utf-8'); toast('SGF 棋谱已导出', 'success')
 }
 
@@ -811,7 +693,7 @@ async function warmupAi() {
   if (state.aiWarmup === 'ready' || state.aiWarmup === 'loading') return
   state.aiWarmup = 'loading'
   try { await ai.warmup(); state.aiWarmup = 'ready' } catch { state.aiWarmup = 'error' }
-  if (state.modal?.type === 'ai' || state.modal?.type === 'play-settings' || state.view === 'features' || state.view === 'home') render()
+  if (state.modal?.type === 'ai' || state.view === 'features') render()
 }
 
 async function analyzeCurrentMove() {
@@ -825,37 +707,6 @@ async function analyzeCurrentMove() {
   } catch (error) { state.analyzing = false; render(); toast(`分析失败：${error.message}`, 'error') }
 }
 
-async function requestCoachHint() {
-  const game = state.game
-  if (!game || game.mode !== 'coach' || game.status !== 'playing' || game.thinking || game.current !== game.humanSide || state.coach.thinking) return
-  state.coach = { thinking: true, text: '冠军引擎正在比较候选落点…', suggested: null }; render()
-  const token = `${game.id}-${game.moves.length}`
-  try {
-    const result = await ai.analyze(game.board, game.humanSide, game.moves, { gameId: `coach-${token}`, budget: 3000 })
-    if (!state.game || `${state.game.id}-${state.game.moves.length}` !== token || state.game.current !== state.game.humanSide) return
-    const suggested = result.move || (result.x != null ? { x: result.x, y: result.y } : null)
-    state.coach = { thinking: false, suggested, text: suggested ? `推荐关注 ${moveLabel(suggested)}，虚线光环已标在棋盘上。` : '当前局面没有稳定的单一推荐手。' }
-    render()
-  } catch (error) {
-    state.coach = { thinking: false, text: `提示暂不可用：${error.message}`, suggested: null }; render()
-  }
-}
-
-function exportCurrentJson() {
-  if (!state.game) return
-  downloadText(`弈境对局-${new Date().toISOString().slice(0, 10)}.json`, JSON.stringify(gameToRecord(state.game), null, 2), 'application/json;charset=utf-8')
-  toast('JSON 对局数据已导出', 'success')
-}
-
-function exportCurrentPng() {
-  const canvas = document.querySelector('#game-board')
-  if (!canvas) return toast('棋盘尚未准备好', 'error')
-  canvas.toBlob((blob) => {
-    if (!blob) return toast('棋盘图片生成失败', 'error')
-    const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = `弈境棋盘-${new Date().toISOString().slice(0, 10)}.png`; link.click(); setTimeout(() => URL.revokeObjectURL(link.href), 1000); toast('棋盘图片已保存', 'success')
-  }, 'image/png')
-}
-
 function inviteUrl(code) {
   const url = new URL(location.href); url.search = ''; url.hash = ''; url.searchParams.set('room', code); return url.toString()
 }
@@ -866,15 +717,8 @@ app.addEventListener('click', async (event) => {
   if (target.dataset.view) return setView(target.dataset.view)
   const action = target.dataset.action
   if (action === 'theme') state.modal = { type: 'theme' }, render()
-  else if (action === 'toggle-sound') { state.sound = !state.sound; persistUiSettings(); vibrate(8); render() }
   else if (action === 'close-modal') { if (event.target.closest('[data-modal]') && !event.target.closest('.modal-close') && target.dataset.action !== 'close-modal') return; state.modal = null; render() }
-  else if (action === 'select-theme') state.theme = target.dataset.themeId, document.documentElement.dataset.theme = state.theme, persistUiSettings(), render()
-  else if (action === 'select-lobby-mode') { state.lobbyMode = target.dataset.mode; persistUiSettings(); render(); if (state.lobbyMode === 'ai' || state.lobbyMode === 'coach') warmupAi() }
-  else if (action === 'open-play-settings') { state.modal = { type: 'play-settings' }; render(); if (state.lobbyMode === 'ai' || state.lobbyMode === 'coach') warmupAi() }
-  else if (action === 'select-lobby-level') { state.lobbyLevel = Number(target.dataset.level); persistUiSettings(); render() }
-  else if (action === 'select-lobby-side') { state.lobbySide = Number(target.dataset.side); persistUiSettings(); render() }
-  else if (action === 'toggle-setting') { const key = target.dataset.key; if (['confirmMove', 'showSituation', 'showMoveNumbers'].includes(key)) state[key] = !state[key], persistUiSettings(), render() }
-  else if (action === 'start-lobby') { if (state.lobbyMode === 'online') state.modal = { type: 'online', phase: 'choose' }, render(); else newGame(state.lobbyMode, { level: state.lobbyLevel, humanSide: state.lobbyMode === 'local' ? BLACK : state.lobbySide }) }
+  else if (action === 'select-theme') state.theme = target.dataset.themeId, document.documentElement.dataset.theme = state.theme, saveSettings({ ...loadSettings(), theme: state.theme, sound: state.sound }), render()
   else if (action === 'open-ai') { state.modal = { type: 'ai', level: Number(target.dataset.level || 5), side: BLACK }; render(); warmupAi() }
   else if (action === 'select-level') state.modal.level = Number(target.dataset.level), render()
   else if (action === 'select-side') state.modal.side = Number(target.dataset.side), render()
@@ -884,18 +728,11 @@ app.addEventListener('click', async (event) => {
   else if (action === 'create-room') { setupRoom(); const code = room.create(); state.modal = { type: 'online', phase: 'room', code }; render() }
   else if (action === 'join-room') { try { const code = document.querySelector('#join-code')?.value; setupRoom(); room.join(code); history.replaceState({}, '', location.pathname); state.modal = { type: 'online', phase: 'room', code: String(code).trim().toUpperCase() }; render() } catch (error) { toast(error.message, 'error') } }
   else if (action === 'copy-room') { await navigator.clipboard.writeText(state.modal.code); toast('房间码已复制', 'success') }
-  else if (action === 'share-room') { const url = inviteUrl(state.modal.code); try { if (navigator.share) await navigator.share({ title: '加入我的弈境棋室', text: `房间码 ${state.modal.code}`, url }); else await navigator.clipboard.writeText(url), toast('邀请链接已复制', 'success') } catch (error) { if (error.name !== 'AbortError') await navigator.clipboard.writeText(url), toast('邀请链接已复制', 'success') } }
+  else if (action === 'share-room') { const url = inviteUrl(state.modal.code); try { if (navigator.share) await navigator.share({ title: '加入我的雾弈棋室', text: `房间码 ${state.modal.code}`, url }); else await navigator.clipboard.writeText(url), toast('邀请链接已复制', 'success') } catch (error) { if (error.name !== 'AbortError') await navigator.clipboard.writeText(url), toast('邀请链接已复制', 'success') } }
   else if (action === 'cancel-online') room?.close(), state.modal = null, render()
-  else if (action === 'cancel-move') state.pendingMove = null, render()
-  else if (action === 'confirm-move') { const game = state.game; const move = state.pendingMove; if (game && move && game.status === 'playing' && !game.thinking && game.current === move.side) applyMove(move.x, move.y, move.side), vibrate(12) }
-  else if (action === 'undo') { const game = state.game; if (game && game.mode !== 'online' && game.status === 'playing' && !game.thinking && game.moves.length) { const count = isEngineMode(game) ? (game.current === game.humanSide ? 2 : 1) : 1; game.moves.splice(Math.max(0, game.moves.length - count), count); game.board = boardAtMove(game.moves); game.current = game.moves.length % 2 ? WHITE : BLACK; state.pendingMove = null; state.coach.suggested = null; persistActiveGame(); render() } }
-  else if (action === 'restart') { const game = state.game; state.modal = null; if (game.mode === 'online') room?.send({ type: 'restart' }), newGame('online', { humanSide: game.humanSide, roomCode: game.roomCode }); else newGame(game.mode, { level: game.level, humanSide: game.humanSide }) }
-  else if (action === 'resign') { const game = state.game; if (game?.status === 'playing') { if (game.mode === 'online') room?.send({ type: 'resign' }); const resigningSide = game.mode === 'local' ? game.current : game.humanSide; const winner = other(resigningSide); finishGame(winner, `${resigningSide === BLACK ? '黑方' : '白方'}认输`, `${winner === BLACK ? 'B' : 'W'}+R`, null); render() } }
-  else if (action === 'coach-hint') requestCoachHint()
-  else if (action === 'game-tools') state.modal = { type: 'game-tools' }, render()
-  else if (action === 'toggle-game-numbers') { state.showMoveNumbers = !state.showMoveNumbers; if (state.game) state.game.showMoveNumbers = state.showMoveNumbers; persistUiSettings(); render() }
-  else if (action === 'export-json') exportCurrentJson()
-  else if (action === 'export-png') exportCurrentPng()
+  else if (action === 'undo') { const game = state.game; if (game?.mode === 'ai' && game.status === 'playing' && !game.thinking && game.moves.length) { const count = game.current === game.humanSide ? 2 : 1; game.moves.splice(Math.max(0, game.moves.length - count), count); game.board = boardAtMove(game.moves); game.current = game.moves.length % 2 ? WHITE : BLACK; persistActiveGame(); render() } }
+  else if (action === 'restart') { const game = state.game; state.modal = null; if (game.mode === 'online') room?.send({ type: 'restart' }), newGame('online', { humanSide: game.humanSide, roomCode: game.roomCode }); else newGame('ai', { level: game.level, humanSide: game.humanSide }) }
+  else if (action === 'resign') { const game = state.game; if (game?.status === 'playing') { if (game.mode === 'online') room?.send({ type: 'resign' }); const winner = other(game.humanSide); finishGame(winner, '你已认输', `${winner === BLACK ? 'B' : 'W'}+R`, null); render() } }
   else if (action === 'save-current') exportRecord(gameToRecord(state.game))
   else if (action === 'replay') { const record = state.history.find((item) => item.id === target.dataset.id); if (record) openReplay(record) }
   else if (action === 'view-last-record') { const record = state.history.find((item) => item.id === state.game.id); if (record) openReplay(record) }
@@ -909,7 +746,7 @@ app.addEventListener('click', async (event) => {
   else if (action === 'replay-auto') { if (state.replayTimer) clearInterval(state.replayTimer), state.replayTimer = null, render(); else { if (state.replayIndex >= state.replay.moves.length) state.replayIndex = 0; state.replayTimer = setInterval(() => { state.replayIndex++; if (state.replayIndex >= state.replay.moves.length) clearInterval(state.replayTimer), state.replayTimer = null; renderReplayFrameOnly() }, 520); render() } }
   else if (action === 'analyze-move') analyzeCurrentMove()
   else if (action === 'puzzle') state.modal = { type: 'puzzle', id: Number(target.dataset.id) }, render()
-  else if (action === 'export-backup') downloadText(`弈境完整备份-${new Date().toISOString().slice(0, 10)}.json`, JSON.stringify(createBackup(), null, 2), 'application/json;charset=utf-8'), toast('完整备份已导出', 'success')
+  else if (action === 'export-backup') downloadText(`雾弈完整备份-${new Date().toISOString().slice(0, 10)}.json`, JSON.stringify(createBackup(), null, 2), 'application/json;charset=utf-8'), toast('完整备份已导出', 'success')
   else if (action === 'import-backup') document.querySelector('#backup-file')?.click()
   else if (action === 'confirm-backup') {
     const summary = importBackup(state.modal.payload)
@@ -918,12 +755,6 @@ app.addEventListener('click', async (event) => {
     state.unfinished = loadUnfinishedGame()
     if (THEMES.some((theme) => theme.id === restoredSettings.theme)) state.theme = restoredSettings.theme
     state.sound = restoredSettings.sound !== false
-    if (validLobbyModes.has(restoredSettings.lobbyMode)) state.lobbyMode = restoredSettings.lobbyMode
-    if (Number.isInteger(restoredSettings.lobbyLevel) && restoredSettings.lobbyLevel >= 1 && restoredSettings.lobbyLevel <= 5) state.lobbyLevel = restoredSettings.lobbyLevel
-    state.lobbySide = restoredSettings.lobbySide === WHITE ? WHITE : BLACK
-    state.confirmMove = restoredSettings.confirmMove === true
-    state.showSituation = restoredSettings.showSituation !== false
-    state.showMoveNumbers = restoredSettings.showMoveNumbers === true
     document.documentElement.dataset.theme = state.theme
     state.modal = null
     render()
@@ -943,7 +774,7 @@ app.addEventListener('change', async (event) => {
   if (event.target.id === 'record-file' && event.target.files?.[0]) {
     try { const file = event.target.files[0]; const text = await file.text(); let record; if (file.name.toLowerCase().endsWith('.json')) { record = JSON.parse(text); record.id = crypto.randomUUID(); if (!Array.isArray(record.moves)) throw new Error('JSON 中没有有效落子') } else record = sgfToRecord(text); state.history = saveRecord(record); render(); toast('棋谱导入成功', 'success') } catch (error) { toast(`导入失败：${error.message}`, 'error') }
   } else if (event.target.id === 'backup-file' && event.target.files?.[0]) {
-    try { const payload = JSON.parse(await event.target.files[0].text()); if (payload.format !== 'aurora-gomoku-backup-v1') throw new Error('不是有效的弈境完整备份'); state.modal = { type: 'backup-preview', payload }; render() } catch (error) { toast(`备份读取失败：${error.message}`, 'error') }
+    try { const payload = JSON.parse(await event.target.files[0].text()); if (payload.format !== 'aurora-gomoku-backup-v1') throw new Error('不是有效的雾弈完整备份'); state.modal = { type: 'backup-preview', payload }; render() } catch (error) { toast(`备份读取失败：${error.message}`, 'error') }
   }
 })
 
