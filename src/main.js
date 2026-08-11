@@ -227,7 +227,8 @@ function renderHome() {
       <div class="hero-copy-wrap">
         <span class="eyebrow"><i class="eyebrow-dot"></i> CHAMPION ENGINE · LOCAL FIRST</span>
         <h1>思考更深，<span class="gradient-word">落子更快。</span></h1>
-        <p class="hero-copy">冠军级 AI、点对点联机与完整棋谱系统，在一座轻盈、安静、不会遮住棋盘的数字棋室里协同工作。</p>
+        <p class="hero-copy hero-copy-desktop">冠军级 AI、点对点联机与完整棋谱系统，在一座轻盈、安静、不会遮住棋盘的数字棋室里协同工作。</p>
+        <p class="hero-copy hero-copy-mobile">冠军级 AI、远程联机与棋谱复盘，一步开始。</p>
         <div class="hero-actions">
           <button class="primary-button" data-action="open-ai">${icon('spark')}挑战 AI</button>
           <button class="secondary-button" data-action="open-online">${icon('wifi')}远程联机</button>
@@ -247,7 +248,7 @@ function renderHome() {
       </button>
     </section>
 
-    <section class="section compact-section">
+    <section class="section compact-section home-levels">
       <div class="section-heading"><div><span class="section-kicker">AI LADDER</span><h2>五重棋力，点选即战</h2><p>最高两档使用 Rapfi 冠军同源核心与官方 mix9svq NNUE，自适应把时间留给真正复杂的局面。</p></div></div>
       <div class="level-grid interactive-levels">${LEVELS.map((level) => `<button class="level-card ${level.id >= 4 ? 'extreme' : ''}" data-action="open-ai" data-level="${level.id}"><span class="level-number">0${level.id}</span><span class="level-strength">${Array.from({ length: 5 }, (_, index) => `<i class="${index < level.id ? 'on' : ''}"></i>`).join('')}</span><h3>${level.name}</h3><p>${level.subtitle}</p><span class="level-enter">立即挑战 ${icon('arrow')}</span></button>`).join('')}</div>
     </section>
